@@ -1,0 +1,60 @@
+[
+    {
+        "id": 1,
+        "project_id": 1,
+        "inventory_id": 1,
+        "repository_id": 1,
+        "environment_id": 1,
+        "name": "Deploy App",
+        "playbook": "playbooks/deploy.yml",
+        "last_task": {
+            "id": 3,
+            "template_id": 1,
+            "project_id": 1,
+            "status": "success",
+            "playbook": "",
+            "user_id": 1,
+            "created": "2026-01-03T12:00:00Z",
+            "start": "2026-01-03T12:00:01Z",
+            "end": "2026-01-03T12:00:10Z",
+            "commit_hash": "aaa1111",
+            "commit_message": "update playbook",
+            "limit": "",
+            "tpl_playbook": "playbooks/deploy.yml",
+            "tpl_alias": "Deploy App",
+            "tpl_app": "ansible",
+            "user_name": "admin"
+        },
+        "app": "ansible",
+        "tasks": 3
+    },
+    {
+        "id": 2,
+        "project_id": 1,
+        "inventory_id": 1,
+        "repository_id": 1,
+        "environment_id": 1,
+        "name": "Setup Base",
+        "playbook": "playbooks/setup.yml",
+        "last_task": {
+            "id": 1,
+            "template_id": 2,
+            "project_id": 1,
+            "status": "success",
+            "playbook": "",
+            "user_id": 1,
+            "created": "2026-01-01T08:00:00Z",
+            "start": "2026-01-01T08:00:01Z",
+            "end": "2026-01-01T08:00:20Z",
+            "commit_hash": "ccc3333",
+            "commit_message": "initial",
+            "limit": "",
+            "tpl_playbook": "playbooks/setup.yml",
+            "tpl_alias": "Setup Base",
+            "tpl_app": "ansible",
+            "user_name": "admin"
+        },
+        "app": "ansible",
+        "tasks": 1
+    }
+]

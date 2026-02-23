@@ -1,0 +1,5 @@
+Template naming: "{View} - {Action}" or "[Env] {View} - {Action}"
+Environments hold stable config, survey vars for run-time choices
+Inventory "All" (#5) + --limit for targeted runs
+app: "ansible" unless otherwise noted
+Use existing resources as templates: GET one that works, modify, POST

@@ -1,0 +1,13 @@
+[
+    {
+        "id": 1,
+        "name": "All Hosts",
+        "project_id": 1,
+        "inventory": "inventory/hosts.yml",
+        "ssh_key_id": 2,
+        "become_key_id": null,
+        "type": "file",
+        "template_id": null,
+        "repository_id": 1
+    }
+]

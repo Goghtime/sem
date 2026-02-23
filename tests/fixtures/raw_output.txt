@@ -1,0 +1,25 @@
+Task Deploy App 2 added to queue
+Started: 2
+Run TaskRunner with template: Deploy App
+
+Preparing: 2
+Updating Repository https://github.com/example/demo-ansible.git
+From https://github.com/example/demo-ansible
+ * branch            main       -> FETCH_HEAD
+Already up to date.
+
+PLAY [Deploy application] *****************************************************
+
+TASK [Gathering Facts] ********************************************************
+ok: [web1]
+
+TASK [Install packages] *******************************************************
+ok: [web1]
+
+TASK [Deploy container] *******************************************************
+fatal: [web1]: FAILED! => {"changed": true, "cmd": "docker compose up -d", "msg": "non-zero return code", "rc": 1, "stderr": "Error: image build failed"}
+
+PLAY RECAP ********************************************************************
+web1                       : ok=2    changed=0    unreachable=0    failed=1    skipped=0    rescued=0    ignored=0
+
+Failed to run task: exit status 1

@@ -1,0 +1,261 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SEM_VERSION="0.2.0"
+
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || realpath "${BASH_SOURCE[0]}")")" && pwd)"
+CONFIG_FILE="${SCRIPT_DIR}/config.env"
+
+_die() { echo "sem: $*" >&2; exit 1; }
+
+# Run a lib/ Python script
+_py() {
+  local script="$1"; shift
+  python3 "${SCRIPT_DIR}/lib/${script}" "$@"
+}
+
+# --- Startup validation ---
+
+command -v python3 >/dev/null 2>&1 || _die "python3 not found"
+command -v curl    >/dev/null 2>&1 || _die "curl not found"
+
+if [[ ! -f "$CONFIG_FILE" ]]; then
+  _die "config.env not found at $CONFIG_FILE"
+fi
+source "$CONFIG_FILE"
+
+[[ -n "${SEMAPHORE_URL:-}" ]]             || _die "SEMAPHORE_URL not set in config.env"
+[[ -n "${SEMAPHORE_API_TOKEN:-}" ]]       || _die "SEMAPHORE_API_TOKEN not set in config.env"
+[[ -n "${SEMAPHORE_DEFAULT_PROJECT:-}" ]] || _die "SEMAPHORE_DEFAULT_PROJECT not set in config.env"
+
+# Strip trailing slash from URL
+SEMAPHORE_URL="${SEMAPHORE_URL%/}"
+
+# --- Flags that exit early ---
+
+if [[ "${1:-}" == "--version" ]]; then
+  echo "sem $SEM_VERSION"
+  exit 0
+fi
+
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+  cat <<EOF
+Semaphore Manage  v${SEM_VERSION}
+================
+URL:              $SEMAPHORE_URL
+Default Project:  $SEMAPHORE_DEFAULT_PROJECT
+Config:           $CONFIG_FILE
+
+Usage: sem <api-path> [curl-options]
+
+Shortcuts:
+  sem --context [project]   Live project briefing (IDs, views, keys, conventions)
+  sem last-error [project]  Diagnose most recent failure (fatal lines, recap, full log path)
+
+Flags:
+  --compact, -c      One-line-per-item summary
+  --failed,  -f      Filter tasks to status=error only (use with tasks endpoints)
+  --set '{...}'      GET → merge JSON → PUT (for updating resources)
+  --version          Print version
+
+Examples:
+  sem /api/ping
+  sem /api/projects
+  sem /api/project/1/tasks
+  sem /api/project/1/templates
+  sem /api/project/1/tasks/last --compact --failed       Show recent failures
+  sem /api/project/1/tasks -X POST -d '{"template_id":5}'
+  sem /api/project/1/templates/58 --set '{"view_id":10}'   (GET → merge → PUT)
+
+Common Endpoints (GET unless noted):
+  Health & Info
+    /api/ping                                      Health check
+    /api/info                                      System info (version, runner config)
+
+  Projects
+    /api/projects                                  List all projects
+
+  Tasks (replace {p} with project ID)
+    /api/project/{p}/tasks                         List tasks
+    /api/project/{p}/tasks/last                    Last 200 tasks
+    /api/project/{p}/tasks/{id}                    Single task detail
+    /api/project/{p}/tasks/{id}/output             Task output/log
+    /api/project/{p}/tasks/{id}/raw_output         Raw Ansible output (full playbook log)
+    /api/project/{p}/tasks -X POST                 Start a task (needs template_id)
+    /api/project/{p}/tasks/{id}/stop -X POST       Stop a task
+
+  Templates
+    /api/project/{p}/templates                     List templates
+    /api/project/{p}/templates/{id}                Template detail
+
+  Inventories
+    /api/project/{p}/inventory                     List inventories
+
+  Environments
+    /api/project/{p}/environment                   List environments
+
+  Keys
+    /api/project/{p}/keys                          List access keys
+
+  Views
+    /api/project/{p}/views                         List views (template groupings)
+    /api/project/{p}/views/{id}                    View detail
+
+  Repositories
+    /api/project/{p}/repositories                  List repositories
+
+  Schedules
+    /api/project/{p}/schedules                     List schedules
+
+  Runners
+    /api/project/{p}/runners                       List runners (if remote runners enabled)
+EOF
+  exit 0
+fi
+
+# --- API helpers ---
+
+_curl() {
+  curl -sSk --connect-timeout 10 --max-time 30 \
+    -H "Authorization: Bearer ${SEMAPHORE_API_TOKEN}" \
+    -H "Content-Type: application/json" \
+    "$@"
+}
+
+_api_get() {
+  local out
+  out=$(_curl "${SEMAPHORE_URL}$1" 2>&1) || _die "GET $1 failed: $out"
+  printf '%s' "$out"
+}
+
+# Longer timeout for raw_output (full Ansible logs)
+_api_get_raw() {
+  local out
+  out=$(curl -sSk --connect-timeout 10 --max-time 60 \
+    -H "Authorization: Bearer ${SEMAPHORE_API_TOKEN}" \
+    -H "Content-Type: application/json" \
+    "${SEMAPHORE_URL}$1" 2>&1) || _die "GET $1 failed: $out"
+  printf '%s' "$out"
+}
+
+# --- Subcommands ---
+
+if [[ "${1:-}" == "--context" ]]; then
+  P="${2:-$SEMAPHORE_DEFAULT_PROJECT}"
+  SEM_CONVENTIONS="${SCRIPT_DIR}/conventions.txt" _py context.py \
+    "$(_api_get /api/project/$P/views)" \
+    "$(_api_get /api/project/$P/inventory)" \
+    "$(_api_get /api/project/$P/environment)" \
+    "$(_api_get /api/project/$P/repositories)" \
+    "$(_api_get /api/project/$P/keys)" \
+    "$(_api_get /api/projects)" \
+    "$P"
+  exit 0
+fi
+
+if [[ "${1:-}" == "last-error" ]]; then
+  P="${2:-$SEMAPHORE_DEFAULT_PROJECT}"
+  TASKS=$(_api_get "/api/project/$P/tasks/last")
+
+  TASK_ID=$(_py last_error_find.py "$TASKS")
+
+  if [[ "$TASK_ID" == "NO_FAILURES" ]]; then
+    echo "no failed tasks in last 200"
+    exit 0
+  fi
+
+  TASK_JSON=$(_py last_error_extract.py "$TASKS" "$TASK_ID")
+
+  _api_get_raw "/api/project/$P/tasks/$TASK_ID/raw_output" \
+    | _py last_error_diagnose.py "$TASK_JSON" "$P"
+  exit 0
+fi
+
+# --- Parse flags ---
+
+COMPACT=false
+FAILED=false
+SET_JSON=""
+ARGS=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --compact|-c) COMPACT=true; shift ;;
+    --failed|-f)  FAILED=true; shift ;;
+    --set)        SET_JSON="$2"; shift 2 ;;
+    *)            ARGS+=("$1"); shift ;;
+  esac
+done
+set -- "${ARGS[@]+"${ARGS[@]}"}"
+
+if [[ $# -eq 0 ]]; then
+  echo "usage: sem <api-path> [--compact] [--failed] [--set '{...}'] [curl-options]" >&2
+  echo "       sem --help, -h    endpoint reference" >&2
+  echo "       sem --context     live project briefing (IDs, views, keys, conventions)" >&2
+  echo "       sem last-error    diagnose most recent failure" >&2
+  echo "" >&2
+  echo "First time? Start with: sem --context" >&2
+  exit 1
+fi
+
+API_PATH="$1"
+shift
+
+# --- --set: GET → merge → PUT ---
+
+if [[ -n "$SET_JSON" ]]; then
+  CURRENT=$(_curl "${SEMAPHORE_URL}${API_PATH}" 2>&1) \
+    || _die "could not GET ${API_PATH}"
+
+  MERGED=$(echo "$CURRENT" | _py merge_json.py "$SET_JSON") \
+    || _die "failed to merge JSON"
+
+  RESPONSE=$(_curl -w "\n%{http_code}" \
+    -X PUT -d "$MERGED" \
+    "${SEMAPHORE_URL}${API_PATH}" 2>&1) \
+    || _die "could not PUT ${API_PATH}"
+
+  HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+  if [[ "$HTTP_CODE" -ge 400 ]] 2>/dev/null; then
+    echo "$RESPONSE" | sed '$d' >&2
+    _die "HTTP $HTTP_CODE on PUT ${API_PATH}"
+  fi
+
+  echo "updated ${API_PATH}"
+  exit 0
+fi
+
+# --- Standard API call ---
+
+RESPONSE=$(_curl -w "\n%{http_code}" \
+  "${SEMAPHORE_URL}${API_PATH}" \
+  "$@" 2>&1) \
+  || _die "could not connect to ${SEMAPHORE_URL}"
+
+HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+BODY=$(echo "$RESPONSE" | sed '$d')
+
+if [[ "$HTTP_CODE" -ge 400 ]] 2>/dev/null; then
+  echo "$BODY" >&2
+  _die "HTTP $HTTP_CODE on ${API_PATH}"
+fi
+
+if [[ -z "$BODY" ]]; then
+  echo "ok (empty response)"
+  exit 0
+fi
+
+# Filter to failed tasks
+if [[ "$FAILED" == true ]]; then
+  BODY=$(echo "$BODY" | _py filter_failed.py) || true
+  if [[ "$BODY" == "[]" ]]; then
+    echo "no failed tasks"
+    exit 0
+  fi
+fi
+
+# Output
+if [[ "$COMPACT" == true ]]; then
+  echo "$BODY" | _py compact.py || echo "$BODY"
+else
+  echo "$BODY" | python3 -m json.tool 2>/dev/null || echo "$BODY"
+fi

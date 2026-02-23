@@ -1,4 +1,5 @@
 config.env
+conventions.txt
 .claude/
 .venv/
 __pycache__/

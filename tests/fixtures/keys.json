@@ -1,0 +1,20 @@
+[
+    {
+        "id": 1,
+        "name": "deploy-key",
+        "type": "login_password",
+        "project_id": 1,
+        "string": "",
+        "login_password": {"login": "", "password": ""},
+        "ssh": {"login": "", "passphrase": "", "private_key": ""}
+    },
+    {
+        "id": 2,
+        "name": "infra-ssh",
+        "type": "ssh",
+        "project_id": 1,
+        "string": "",
+        "login_password": {"login": "", "password": ""},
+        "ssh": {"login": "", "passphrase": "", "private_key": ""}
+    }
+]

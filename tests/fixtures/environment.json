@@ -1,0 +1,90 @@
+[
+    {
+        "id": 11,
+        "name": "Cloudflare + Rproxy Secrets",
+        "project_id": 1,
+        "password": null,
+        "json": "{\"cloudflare_env\": {\"ACCOUNT_ID\": \"\", \"API_TOKEN\": \"\"}, \"rproxy_env\": {\"TUNNEL_ID\": \"\"}}",
+        "env": null
+    },
+    {
+        "id": 6,
+        "name": "Cloudflare Secrets",
+        "project_id": 1,
+        "password": null,
+        "json": "{\"cloudflare_env\": {\"ACCOUNT_ID\": \"\", \"API_TOKEN\": \"\"}}",
+        "env": null
+    },
+    {
+        "id": 7,
+        "name": "Collector Secrets",
+        "project_id": 1,
+        "password": null,
+        "json": "{\"github_pat\": \"\", \"collector_env\": {\"TEP_EMAIL\": \"\", \"TEP_PASSWORD\": \"\", \"COX_USER\": \"\", \"COX_PASSWORD\": \"\", \"DB_HOST\": \"\", \"DB_PORT\": \"\", \"DB_NAME\": \"\", \"DB_USER\": \"\", \"DB_PASSWORD\": \"\"}}",
+        "env": null
+    },
+    {
+        "id": 2,
+        "name": "Default",
+        "project_id": 1,
+        "password": null,
+        "json": "{}",
+        "env": "{}"
+    },
+    {
+        "id": 1,
+        "name": "Empty",
+        "project_id": 1,
+        "password": null,
+        "json": "{}",
+        "env": "{}"
+    },
+    {
+        "id": 9,
+        "name": "Grafana Secrets",
+        "project_id": 1,
+        "password": null,
+        "json": "{\"grafana_env\": {\"GF_ADMIN_USER\": \"\", \"GF_ADMIN_PASSWORD\": \"\"}, \"github_pat\": \"\"}",
+        "env": null
+    },
+    {
+        "id": 4,
+        "name": "Guacamole Secrets",
+        "project_id": 1,
+        "password": null,
+        "json": "{\"github_pat\": \"\", \"guacamole_env\": {\"GUACAMOLE_VERSION\": \"\", \"GUACAMOLE_PORT\": \"\", \"POSTGRES_DB\": \"\", \"POSTGRES_USER\": \"\", \"POSTGRES_PASSWORD\": \"\"}}",
+        "env": null
+    },
+    {
+        "id": 10,
+        "name": "MTGEEZ Secrets",
+        "project_id": 1,
+        "password": null,
+        "json": "{\"github_pat\": \"\", \"mtgeez_env\": {\"PORT\": \"\", \"JWT_SECRET\": \"\", \"GOOGLE_CLIENT_ID\": \"\", \"GOOGLE_CLIENT_SECRET\": \"\", \"GOOGLE_REDIRECT_URI\": \"\", \"SLACK_WEBHOOK_URL\": \"\"}}",
+        "env": null
+    },
+    {
+        "id": 8,
+        "name": "PostgreSQL Secrets",
+        "project_id": 1,
+        "password": null,
+        "json": "{\"postgres_env\": {\"POSTGRES_USER\": \"\", \"POSTGRES_PASSWORD\": \"\", \"POSTGRES_DB\": \"\"}, \"github_pat\": \"\"}",
+        "env": null
+    },
+    {
+        "id": 5,
+        "name": "Rproxy Secrets",
+        "project_id": 1,
+        "password": null,
+        "json": "{\"github_pat\": \"\", \"rproxy_env\": {\"TUNNEL_ID\": \"\", \"TUNNEL_CREDENTIALS\": \"\"}}",
+        "env": null
+    },
+    {
+        "id": 3,
+        "name": "Semaphore Secrets",
+        "project_id": 1,
+        "password": null,
+        "json": "{\"semaphore_env\": {\"POSTGRES_USER\": \"\", \"POSTGRES_PASSWORD\": \"\", \"POSTGRES_DB\": \"\", \"SEMAPHORE_ADMIN_NAME\": \"\", \"SEMAPHORE_ADMIN_EMAIL\": \"\", \"SEMAPHORE_ADMIN_PASSWORD\": \"\", \"SEMAPHORE_ADMIN\": \"\", \"SEMAPHORE_ACCESS_KEY_ENCRYPTION\": \"\", \"SEMAPHORE_SLACK_URL\": \"\"}}",
+        "env": "{}"
+    }
+]

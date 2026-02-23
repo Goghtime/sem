@@ -1,0 +1,15 @@
+[
+    {
+        "id": 1,
+        "project_id": 1,
+        "title": "All",
+        "position": 0,
+        "type": "all"
+    },
+    {
+        "id": 2,
+        "project_id": 1,
+        "title": "Web",
+        "position": 1
+    }
+]

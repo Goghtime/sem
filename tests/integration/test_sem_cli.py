@@ -74,6 +74,12 @@ def test_bad_endpoint():
     assert "sem:" in r.stderr
 
 
+def test_resolve():
+    r = _run("/api/project/1/inventory", "--resolve")
+    assert r.returncode == 0
+    assert "_resolved" in r.stdout
+
+
 def test_no_args():
     r = _run()
     assert r.returncode != 0

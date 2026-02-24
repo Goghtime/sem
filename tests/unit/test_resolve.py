@@ -1,6 +1,14 @@
-import json
-
 import resolve
+
+
+def _lookups(fixtures):
+    return resolve.build_lookups(
+        fixtures["keys"],
+        fixtures["inventory"],
+        fixtures["environment"],
+        fixtures["repositories"],
+        fixtures["views"],
+    )
 
 
 def test_parse_key_map_multiple():
@@ -39,86 +47,47 @@ def test_find_resolvable_template():
 
 def test_find_resolvable_no_refs():
     obj = {"id": 1, "name": "just a thing", "status": "success"}
-    found = resolve.find_resolvable(obj)
-    assert found == []
+    assert resolve.find_resolvable(obj) == []
 
 
-def test_resolve_item_with_mock_fetcher(fixtures):
+def test_resolve_item_inventory(fixtures):
+    lookups = _lookups(fixtures)
     inventory = fixtures["inventory"][0]  # ssh_key_id: 2, repository_id: 1
-    keys_by_id = {k["id"]: k for k in fixtures["keys"]}
-    repos_by_id = {r["id"]: r for r in fixtures["repositories"]}
 
-    def mock_fetcher(url, token):
-        if "/keys/" in url:
-            kid = int(url.rstrip("/").split("/")[-1])
-            return keys_by_id[kid]
-        if "/repositories/" in url:
-            rid = int(url.rstrip("/").split("/")[-1])
-            return repos_by_id[rid]
-        raise ValueError(f"unexpected url: {url}")
-
-    result = resolve.resolve_item(
-        inventory, project_id="1", base_url="https://test",
-        token="tok", key_map={}, fetcher=mock_fetcher,
-    )
+    result = resolve.resolve_item(inventory, lookups, key_map={})
     assert "_resolved" in result
     assert result["_resolved"]["ssh_key"]["name"] == "infra-ssh"
     assert result["_resolved"]["repository"]["name"] == "demo-ansible"
 
 
 def test_key_map_attaches_local_path(fixtures):
-    inventory = fixtures["inventory"][0]  # ssh_key_id: 2 -> infra-ssh
-    keys_by_id = {k["id"]: k for k in fixtures["keys"]}
-
-    def mock_fetcher(url, token):
-        if "/keys/" in url:
-            kid = int(url.rstrip("/").split("/")[-1])
-            return keys_by_id[kid]
-        return {}
+    lookups = _lookups(fixtures)
+    inventory = fixtures["inventory"][0]
 
     result = resolve.resolve_item(
-        inventory, project_id="1", base_url="https://test",
-        token="tok", key_map={"infra-ssh": "~/.ssh/infra_ssh"},
-        fetcher=mock_fetcher,
+        inventory, lookups, key_map={"infra-ssh": "~/.ssh/infra_ssh"},
     )
     assert result["_resolved"]["ssh_key"]["local_path"] == "~/.ssh/infra_ssh"
 
 
 def test_key_map_no_match(fixtures):
+    lookups = _lookups(fixtures)
     inventory = fixtures["inventory"][0]
-    keys_by_id = {k["id"]: k for k in fixtures["keys"]}
-
-    def mock_fetcher(url, token):
-        if "/keys/" in url:
-            kid = int(url.rstrip("/").split("/")[-1])
-            return keys_by_id[kid]
-        return {}
 
     result = resolve.resolve_item(
-        inventory, project_id="1", base_url="https://test",
-        token="tok", key_map={"other-key": "~/.ssh/other"},
-        fetcher=mock_fetcher,
+        inventory, lookups, key_map={"other-key": "~/.ssh/other"},
     )
     assert "local_path" not in result["_resolved"]["ssh_key"]
 
 
 def test_resolve_array(fixtures):
+    lookups = _lookups(fixtures)
     items = [
         {"id": 1, "ssh_key_id": 2},
         {"id": 2, "ssh_key_id": 2},
     ]
-    keys_by_id = {k["id"]: k for k in fixtures["keys"]}
 
-    def mock_fetcher(url, token):
-        if "/keys/" in url:
-            kid = int(url.rstrip("/").split("/")[-1])
-            return keys_by_id[kid]
-        return {}
-
-    results = [
-        resolve.resolve_item(item, "1", "https://test", "tok", {}, mock_fetcher)
-        for item in items
-    ]
+    results = [resolve.resolve_item(item, lookups, key_map={}) for item in items]
     assert all("_resolved" in r for r in results)
 
 
@@ -130,14 +99,9 @@ def test_null_id_skipped():
     assert "become_key_id" not in fields
 
 
-def test_fetch_failure_skips_gracefully():
-    obj = {"id": 1, "ssh_key_id": 99}
+def test_missing_id_skipped(fixtures):
+    lookups = _lookups(fixtures)
+    obj = {"id": 1, "ssh_key_id": 999}
 
-    def failing_fetcher(url, token):
-        raise ConnectionError("nope")
-
-    result = resolve.resolve_item(
-        obj, project_id="1", base_url="https://test",
-        token="tok", key_map={}, fetcher=failing_fetcher,
-    )
+    result = resolve.resolve_item(obj, lookups, key_map={})
     assert "_resolved" not in result

@@ -260,14 +260,16 @@ fi
 # Resolve foreign-key references
 if [[ "$RESOLVE" == true ]]; then
   # Extract project ID from API path (e.g. /api/project/1/inventory/6 → 1)
-  SEM_PROJECT=$(echo "$API_PATH" | sed -n 's|.*/project/\([0-9]*\)/.*|\1|p')
-  SEM_PROJECT="${SEM_PROJECT:-$SEMAPHORE_DEFAULT_PROJECT}"
+  _R_P=$(echo "$API_PATH" | sed -n 's|.*/project/\([0-9]*\)/.*|\1|p')
+  _R_P="${_R_P:-$SEMAPHORE_DEFAULT_PROJECT}"
   BODY=$(echo "$BODY" \
-    | SEM_PROJECT="$SEM_PROJECT" \
-      SEMAPHORE_URL="$SEMAPHORE_URL" \
-      SEMAPHORE_API_TOKEN="$SEMAPHORE_API_TOKEN" \
-      SEMAPHORE_KEY_MAP="${SEMAPHORE_KEY_MAP:-}" \
-      _py resolve.py) || _die "resolve failed"
+    | SEMAPHORE_KEY_MAP="${SEMAPHORE_KEY_MAP:-}" \
+      _py resolve.py \
+        "$(_api_get /api/project/$_R_P/keys)" \
+        "$(_api_get /api/project/$_R_P/inventory)" \
+        "$(_api_get /api/project/$_R_P/environment)" \
+        "$(_api_get /api/project/$_R_P/repositories)" \
+        "$(_api_get /api/project/$_R_P/views)") || _die "resolve failed"
 fi
 
 # Output

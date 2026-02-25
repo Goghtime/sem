@@ -204,6 +204,8 @@ fi
 API_PATH="$1"
 shift
 
+[[ "$API_PATH" == /* ]] || _die "invalid path '$API_PATH' — must start with / (e.g. /api/project/1/templates)"
+
 # --- --set: GET → merge → PUT ---
 
 if [[ -n "$SET_JSON" ]]; then

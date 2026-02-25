@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SEM_VERSION="0.2.0"
+SEM_VERSION="0.3.0"
 
 SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || realpath "${BASH_SOURCE[0]}")")" && pwd)"
 CONFIG_FILE="${SCRIPT_DIR}/config.env"
@@ -55,6 +55,7 @@ Shortcuts:
 Flags:
   --compact, -c      One-line-per-item summary
   --failed,  -f      Filter tasks to status=error only (use with tasks endpoints)
+  --resolve, -r      Expand foreign-key IDs into referenced objects
   --set '{...}'      GET → merge JSON → PUT (for updating resources)
   --version          Print version
 
@@ -66,6 +67,7 @@ Examples:
   sem /api/project/1/tasks/last --compact --failed       Show recent failures
   sem /api/project/1/tasks -X POST -d '{"template_id":5}'
   sem /api/project/1/templates/58 --set '{"view_id":10}'   (GET → merge → PUT)
+  sem /api/project/1/inventory/6 --resolve                 Expand foreign-key IDs
 
 Common Endpoints (GET unless noted):
   Health & Info
@@ -175,12 +177,14 @@ fi
 
 COMPACT=false
 FAILED=false
+RESOLVE=false
 SET_JSON=""
 ARGS=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --compact|-c) COMPACT=true; shift ;;
     --failed|-f)  FAILED=true; shift ;;
+    --resolve|-r) RESOLVE=true; shift ;;
     --set)        SET_JSON="$2"; shift 2 ;;
     *)            ARGS+=("$1"); shift ;;
   esac
@@ -251,6 +255,21 @@ if [[ "$FAILED" == true ]]; then
     echo "no failed tasks"
     exit 0
   fi
+fi
+
+# Resolve foreign-key references
+if [[ "$RESOLVE" == true ]]; then
+  # Extract project ID from API path (e.g. /api/project/1/inventory/6 → 1)
+  _R_P=$(echo "$API_PATH" | sed -n 's|.*/project/\([0-9]*\)/.*|\1|p')
+  _R_P="${_R_P:-$SEMAPHORE_DEFAULT_PROJECT}"
+  BODY=$(echo "$BODY" \
+    | SEMAPHORE_KEY_MAP="${SEMAPHORE_KEY_MAP:-}" \
+      _py resolve.py \
+        "$(_api_get /api/project/$_R_P/keys)" \
+        "$(_api_get /api/project/$_R_P/inventory)" \
+        "$(_api_get /api/project/$_R_P/environment)" \
+        "$(_api_get /api/project/$_R_P/repositories)" \
+        "$(_api_get /api/project/$_R_P/views)") || _die "resolve failed"
 fi
 
 # Output

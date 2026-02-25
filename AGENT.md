@@ -105,3 +105,5 @@ lib/                 Python modules (called by sem)
 
 - `bash`, `curl`, `python3` (validated at startup)
 - Network access to Semaphore instance
+- **Windows:** Git for Windows (provides bash), then run `install.ps1` to add to PATH
+- **Linux/macOS:** Run `install.sh` to symlink into `~/.local/bin`

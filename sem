@@ -49,6 +49,7 @@ Config:           $CONFIG_FILE
 Usage: sem <api-path> [curl-options]
 
 Shortcuts:
+  sem run <template_id>     Start a task from a template
   sem --context [project]   Live project briefing (IDs, views, keys, conventions)
   sem last-error [project]  Diagnose most recent failure (fatal lines, recap, full log path)
 
@@ -152,6 +153,35 @@ if [[ "${1:-}" == "--context" ]]; then
     "$(_api_get /api/project/$P/keys)" \
     "$(_api_get /api/projects)" \
     "$P"
+  exit 0
+fi
+
+if [[ "${1:-}" == "run" ]]; then
+  [[ -n "${2:-}" ]] || _die "usage: sem run <template_id> [project]"
+  TMPL_ID="$2"
+  P="${3:-$SEMAPHORE_DEFAULT_PROJECT}"
+  # Build survey var defaults as task environment override
+  SURVEY_ENV=$(
+    _api_get "/api/project/${P}/templates/${TMPL_ID}" \
+    | python3 -c "
+import sys, json
+t = json.load(sys.stdin)
+sv = t.get('survey_vars') or []
+env = {v['name']: v['default_value'] for v in sv if v.get('default_value')}
+print(json.dumps(json.dumps(env)) if env else '\"{}\"')
+" 2>/dev/null) || SURVEY_ENV='"{}"'
+  RESPONSE=$(_curl -w "\n%{http_code}" \
+    -X POST -d "{\"template_id\": ${TMPL_ID}, \"environment\": ${SURVEY_ENV}}" \
+    "${SEMAPHORE_URL}/api/project/${P}/tasks" 2>&1) \
+    || _die "could not connect to ${SEMAPHORE_URL}"
+  HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+  BODY=$(echo "$RESPONSE" | sed '$d')
+  if [[ "$HTTP_CODE" -ge 400 ]] 2>/dev/null; then
+    echo "$BODY" >&2
+    _die "HTTP $HTTP_CODE — failed to start template $TMPL_ID"
+  fi
+  TASK_ID=$(echo "$BODY" | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])" 2>/dev/null)
+  echo "started task $TASK_ID (template $TMPL_ID)"
   exit 0
 fi
 

@@ -16,6 +16,7 @@ Read the output. It has everything you need to construct API calls.
 | Command | What it does |
 |---------|-------------|
 | `sem --context [project]` | Project briefing (IDs, views, keys, conventions) |
+| `sem run <template_id> [project]` | Start a task, passing the template's survey defaults |
 | `sem last-error [project]` | Diagnose most recent failed task |
 | `sem <api-path>` | Raw API call (pretty-printed JSON) |
 | `sem <api-path> --compact` | One-line-per-item summary |
@@ -52,7 +53,8 @@ sem /api/project/1/tasks/197/raw_output    # full Ansible log for task 197
 
 ### Run a template
 ```bash
-sem /api/project/1/tasks -X POST -d '{"template_id":5}'
+sem run 5                                  # uses survey var defaults, prints task ID
+sem /api/project/1/tasks -X POST -d '{"template_id":5}'   # raw form, no survey defaults
 ```
 
 ### Update a resource field
@@ -80,6 +82,7 @@ sem /api/project/1/views -c
 | Mode | Format |
 |------|--------|
 | Default | Pretty-printed JSON |
+| `run` | `started task <id> (template <id>)` |
 | `--compact` | `#ID  status  name  timestamp` (type-detected) |
 | `--context` | Structured briefing (not JSON) |
 | `--resolve` | Original JSON with `_resolved` key containing expanded references |
@@ -97,9 +100,10 @@ sem /api/project/1/views -c
 
 ```
 sem                  CLI entry point (Bash)
-config.env           SEMAPHORE_URL, SEMAPHORE_API_TOKEN, SEMAPHORE_DEFAULT_PROJECT, SEMAPHORE_KEY_MAP
+config.env           SEMAPHORE_URL, SEMAPHORE_API_TOKEN, SEMAPHORE_DEFAULT_PROJECT
+                     (+ optional SEMAPHORE_KEY_MAP for --resolve local key paths)
 config.env.example   Template for config.env
-conventions.txt      Project naming conventions (loaded by --context)
+conventions.txt      Optional — project naming conventions (loaded by --context if present)
 lib/                 Python modules (called by sem)
   context.py         Format --context briefing
   compact.py         Type-detect and format one-liners
